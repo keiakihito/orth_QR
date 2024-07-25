@@ -87,10 +87,10 @@ void orth_QRtest1()
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-    if(mtxQ_trnc_d != NULL){
-        printf("\n\n~~mtxQ_trnc_d~~\n\n");
-        print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
-    }
+    // if(mtxQ_trnc_d != NULL){
+    //     printf("\n\n~~mtxQ_trnc_d~~\n\n");
+    //     print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+    // }
     
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
 
