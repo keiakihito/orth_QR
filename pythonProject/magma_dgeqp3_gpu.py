@@ -2,12 +2,19 @@ import numpy as np
 from scipy.linalg import qr
 
 # Given matrix
+
+#Case 1
 A = np.array([
     [1.0, 5.0, 9.0],
     [2.0, 6.0, 10.0],
     [3.0, 7.0, 11.0],
     [4.0, 8.0, 12.0]
 ])
+
+#case2
+#case3
+#case4
+#case5
 
 # Perform QR decomposition with column pivoting
 Q, R, P = qr(A, pivoting=True)

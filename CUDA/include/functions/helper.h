@@ -1,14 +1,13 @@
-#ifndef HELPER_FUNCTIONS_H
-#define HELPER_FUNCTIONS_H
+#ifndef HELPER_H
+#define HELPER_H
 
 #include <iostream>
 #include <cuda_runtime.h>
 #include <cstdlib>
-// #include <cmath>
 #include <sys/time.h>
 
 // helper function CUDA error checking and initialization
-#include "../utils/checks.h"  
+#include "../checks/checks.h"  
 
 #include "../CSRMatrix.h"
 
@@ -123,4 +122,4 @@ void initializeRandom(double mtxB_h[], int numOfRow, int numOfClm)
 
 
 
-#endif // HELPER_FUNCTIONS_H
+#endif // HELPER_H
