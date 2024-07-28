@@ -32,17 +32,17 @@ int main(int argc, char** argv)
     printf("\n\n🔍🔍🔍Test case 1🔍🔍🔍\n");
     orth_QRtest1();
     
-    // printf("\n\n🔍🔍🔍Test case 2🔍🔍🔍\n");
-    // orth_QRtest2();
+    printf("\n\n🔍🔍🔍Test case 2🔍🔍🔍\n");
+    orth_QRtest2();
 
-    // printf("\n\n🔍🔍🔍Test case 3🔍🔍🔍\n");
-    // orth_QRtest3();
+    printf("\n\n🔍🔍🔍Test case 3🔍🔍🔍\n");
+    orth_QRtest3();
 
-    // printf("\n\n🔍🔍🔍Test case 4🔍🔍🔍\n");
-    // orth_QRtest4();
+    printf("\n\n🔍🔍🔍Test case 4🔍🔍🔍\n");
+    orth_QRtest4();
 
-    // printf("\n\n🔍🔍🔍Test case 5🔍🔍🔍\n");
-    // orth_QRtest5();
+    printf("\n\n🔍🔍🔍Test case 5🔍🔍🔍\n");
+    orth_QRtest5();
 
     printf("\n= = = End of orth_test  = = = \n\n");
 
@@ -87,6 +87,7 @@ void orth_QRtest1()
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
+
     // if(mtxQ_trnc_d != NULL){
     //     printf("\n\n~~mtxQ_trnc_d~~\n\n");
     //     print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
@@ -128,10 +129,10 @@ void orth_QRtest2()
 
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
-    (&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-    printf("\n\n~~mtxY_Hat~~\n\n");
-    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+
+    // printf("\n\n~~mtxY_Hat~~\n\n");
+    // print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
 
 } // end of orth_QRtest1()
@@ -169,10 +170,9 @@ void orth_QRtest3()
 
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
-    (&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-    printf("\n\n~~mtxY_Hat~~\n\n");
-    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+    // printf("\n\n~~mtxY_Hat~~\n\n");
+    // print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
 
 } // end of orth_QRtest1()
@@ -214,10 +214,9 @@ void orth_QRtest4()
 
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
-    (&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-    printf("\n\n~~mtxY_Hat~~\n\n");
-    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+    // printf("\n\n~~mtxY_Hat~~\n\n");
+    // print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
 
 
@@ -269,10 +268,10 @@ void orth_QRtest5()
 
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
-    (&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-    printf("\n\n~~mtxY_Hat~~\n\n");
-    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+
+    // printf("\n\n~~mtxY_Hat~~\n\n");
+    // print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
 
 } // end of orth_QRtest1()

@@ -47,19 +47,23 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
     const double THREASHOLD = 1e-6;
 
     magmaDouble_ptr mtxZ_cpy_d = NULL;
-    magmaDouble_ptr mtxQ_d = NULL;
+    // magmaDouble_ptr mtxQ_d = NULL;
     magmaDouble_ptr tau_d = NULL;
 
     magma_int_t lda = numOfRow; // leading dimenstion
     magma_int_t mn = numOfClm; // numOfClm < numOfRow
     magma_int_t lwork = 0;
-    magma_int_t nb = magma_get_dgeqp3_nb(numOfRow, numOfClm); // Block size
+    magma_int_t nb = magma_get_dgeqp3_nb(lda, mn); // Block size
+    
+
+
     magma_int_t info = 0;
     magma_int_t* ipiv = NULL; //pivotig information
 
     magmaDouble_ptr tau_h = NULL;
-    magmaDouble_ptr dT = NULL;
+    // magmaDouble_ptr dT = NULL;
     magmaDouble_ptr work_d = NULL;
+    // magmaDouble_ptr rwork_d = NULL; // Place holder for complex
 
 
 
@@ -67,37 +71,59 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
     // CHECK(cudaMalloc((void**)&mtxZ_cpy_d, numOfRow * numOfClm * sizeof(magmaDouble_ptr)));
     CHECK_MAGMA(magma_dmalloc(&mtxZ_cpy_d, lda * mn));
 
+    // if(debug){
+    //     printf("\n\n~~mtxZ_cpy_d~~\n\n");
+    //     print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
+    // }
+
+
     // CHECK(cudaMalloc((void**)&mtxQ_d, numOfRow * numOfRow * sizeof(magmaDouble_ptr)));
-    CHECK_MAGMA(magma_dmalloc(&mtxQ_d, lda * lda));
+    // CHECK_MAGMA(magma_dmalloc(&mtxQ_d, lda * lda));
+    // cudaDeviceSynchronize();
 
     // ipiv = (magma_int_t*)calloc(numOfClm, sizeof(magma_int_t));
     CHECK_MAGMA(magma_imalloc_cpu(&ipiv, mn));
 
-    // CHECK(cudaMalloc((void**)&tau_d, numOfClm * sizeof(double)));
-    CHECK_MAGMA(magma_dmalloc(&tau_d, mn));
 
-    // tau_h = (double*)calloc(numOfClm, sizeof(double));
+    // initialize
+    for(int i = 0; i < mn; i++){
+        ipiv[i] = 0;
+    }
+        
+    tau_h = (double*)calloc(numOfClm, sizeof(double));
     CHECK_MAGMA(magma_dmalloc_cpu(&tau_h, mn));
 
+    // CHECK(cudaMalloc((void**)&tau_d, numOfClm * sizeof(double)));
+    CHECK_MAGMA(magma_dmalloc(&tau_d, mn));
+    CHECK(cudaMemcpy(tau_d, tau_h, mn * sizeof(magmaDouble_ptr), cudaMemcpyHostToDevice));
+
+
+
+
+
     // CHECK(cudaMalloc((void**)&dT, (2 * nb * numOfRow + (2*nb+1) * nb) * sizeof(magmaDouble_ptr)));
-    CHECK_MAGMA(magma_dmalloc(&dT, (2 * nb * numOfRow + (2*nb+1) * nb)));
+    // CHECK_MAGMA(magma_dmalloc(&dT, (2 * nb * lda + (2*nb+1) * nb)));
+    // cudaDeviceSynchronize();
 
     //(2) Copy value to device
     CHECK(cudaMemcpy(mtxZ_cpy_d, mtxZ_d, lda * mn * sizeof(magmaDouble_ptr), cudaMemcpyDeviceToDevice));
+    cudaDeviceSynchronize();
 
-    if(debug){
-        printf("\n\n~~mtxZ_cpy_d~~\n\n");
-        print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
-    }
+    // if(debug){
+    //     printf("\n\n~~mtxZ_cpy_d~~\n\n");
+    //     print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
+    // }
 
 
     //(3) Calculate lwork based on the documentation
     // lwork = (numOfClm + 1) * nb + 2 * numOfClm;
     lwork = (mn + 1) * nb + 2 * mn;
-
-    // lwork = max( lwork, numOfRow*numOfClm + numOfClm );
+    lwork = max( lwork, lda*mn + mn );
     if(debug){
-        printf("\n\nlwork: %d\n\n", lwork);
+        printf("\nlda: %d", lda);
+        printf("\nmn: %d", mn);
+        printf("\nnb: %d", nb);
+        printf("\nlwork: %d\n\n", lwork);
     }
 
     // lwork = 200;
@@ -105,15 +131,25 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
     //(4) Allocate workspace 
     // CHECK(cudaMalloc((void**)&work_d, lwork * sizeof(magmaDouble_ptr)));
     CHECK_MAGMA(magma_dmalloc(&work_d, lwork));
+    cudaDeviceSynchronize();
+    // if(debug){
+    //     printf("\n\n~~work_d~~\n\n");
+    //     print_vector(work_d, lwork);
+    // }
+
 
 
     printf("\nBefore magma_dgeqp3_gpu\n\n");
+    if(debug){
+        printf("\n\n~~mtxZ_cpy_d~~\n\n");
+        print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
+    }
 
 
     if(debug){
         printf("\n\nipiv: \n");
         for(int i = 0; i < numOfClm; i++){
-            printf("%d\n", ipiv[i]);
+            printf("%d,", ipiv[i]);
         }
     }
     
@@ -127,7 +163,7 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
     //mtxZ_cpy_d contains the R matrix in its upper triangular part,
     //the orthogonal matrix Q is represented implicitly by the Householder vectors stored in the lower triangular part of mtxZ_cpy_d and in tau_d, scalor.
     CHECK_MAGMA(magma_dgeqp3_gpu(lda, mn, mtxZ_cpy_d, lda, ipiv, tau_d, work_d, lwork, &info));
-
+    cudaDeviceSynchronize();
     /*
     Expected
 
@@ -155,7 +191,7 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
         printf("\nAfter magma_dgeqp3_gpu\n\n");
         printf("\n\nipiv: \n");
         for(int i = 0; i < numOfClm; i++){
-            printf("%d\n", ipiv[i]);
+            printf("%d, ", ipiv[i]);
         }
         printf("\n\ntau_d: \n");
         print_vector(tau_d, numOfClm);
@@ -168,7 +204,7 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
         
     }
 
-    CHECK(cudaMemcpy(tau_h, tau_d, numOfClm * sizeof(double), cudaMemcpyDeviceToHost));
+    // CHECK(cudaMemcpy(tau_h, tau_d, numOfClm * sizeof(double), cudaMemcpyDeviceToHost));
 
     // if(debug){
     //     printf("\n\ntau_h: \n");
@@ -210,13 +246,13 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
     CHECK_MAGMA(magma_free(mtxZ_cpy_d));
 
     // CHECK(cudaFree(mtxQ_d));
-    CHECK_MAGMA(magma_free(mtxQ_d));
+    // CHECK_MAGMA(magma_free(mtxQ_d));
 
     // free(ipiv);
     CHECK_MAGMA(magma_free_cpu(ipiv));
 
     // free(tau_h);
-    CHECK_MAGMA(magma_free_cpu(tau_h));
+    // CHECK_MAGMA(magma_free_cpu(tau_h));
 
     // CHECK(cudaFree(tau_d));
     CHECK_MAGMA(magma_free(tau_d));
@@ -225,7 +261,7 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
     CHECK_MAGMA(magma_free(work_d));
 
     // CHECK(cudaFree(dT));
-    CHECK_MAGMA(magma_free(dT));
+    // CHECK_MAGMA(magma_free(dT));
 
     magma_finalize();
 
