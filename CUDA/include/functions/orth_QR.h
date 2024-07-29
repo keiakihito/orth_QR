@@ -25,8 +25,10 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
 //Input: singluar values, int currnet rank, double threashould
 //Process: Check eigenvalues are greater than threashould, then set new rank
 //Output: int newRank
-int setRank(double* sngVals_d, int currentRank, double threashold);
+int setRank(double* mtxR_d, int numOfRow, int currentRank, double threashold);
 
+//Process: count the number of tau values
+int getNumOfTau(double* tau_h, int numOfClm);
 
 /*
 Personal Note: How to Run magma in NCSA
@@ -42,153 +44,82 @@ nvcc orth_QRTest.cu -o orth_QRTest -I/sw/spack/deltas11-2023-03/apps/linux-rhel8
 void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, int &currentRank)
 {
     magma_init();
-
+    assert(numOfClm < numOfRow && "The nuber of row should be larger the number of clomn, matrix should be tall and skiny");
     bool debug = true;
     const double THREASHOLD = 1e-6;
 
     magmaDouble_ptr mtxZ_cpy_d = NULL;
-    // magmaDouble_ptr mtxQ_d = NULL;
+    magmaDouble_ptr mtxQ_d = NULL;
     magmaDouble_ptr tau_d = NULL;
 
     magma_int_t lda = numOfRow; // leading dimenstion
     magma_int_t mn = numOfClm; // numOfClm < numOfRow
     magma_int_t lwork = 0;
     magma_int_t nb = magma_get_dgeqp3_nb(lda, mn); // Block size
-    
-
-
     magma_int_t info = 0;
     magma_int_t* ipiv = NULL; //pivotig information
+    magma_int_t numOfTau = 0;
 
     magmaDouble_ptr tau_h = NULL;
-    // magmaDouble_ptr dT = NULL;
+    magmaDouble_ptr dT = NULL;
     magmaDouble_ptr work_d = NULL;
-    // magmaDouble_ptr rwork_d = NULL; // Place holder for complex
-
 
 
     //(1) Allocate memory
-    // CHECK(cudaMalloc((void**)&mtxZ_cpy_d, numOfRow * numOfClm * sizeof(magmaDouble_ptr)));
     CHECK_MAGMA(magma_dmalloc(&mtxZ_cpy_d, lda * mn));
+    CHECK_MAGMA(magma_dmalloc(&mtxQ_d, lda * lda));
 
-    // if(debug){
-    //     printf("\n\n~~mtxZ_cpy_d~~\n\n");
-    //     print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
-    // }
+    // Allocate pivot value in host and initialize 0 surely.
+    ipiv = (int*)calloc(mn, sizeof(int));
+    check_allocation(ipiv);
 
-
-    // CHECK(cudaMalloc((void**)&mtxQ_d, numOfRow * numOfRow * sizeof(magmaDouble_ptr)));
-    // CHECK_MAGMA(magma_dmalloc(&mtxQ_d, lda * lda));
-    // cudaDeviceSynchronize();
-
-    // ipiv = (magma_int_t*)calloc(numOfClm, sizeof(magma_int_t));
-    CHECK_MAGMA(magma_imalloc_cpu(&ipiv, mn));
-
-
-    // initialize
-    for(int i = 0; i < mn; i++){
-        ipiv[i] = 0;
-    }
-        
+    // Allocate tau values in devide side and initialize with calloc.
     tau_h = (double*)calloc(numOfClm, sizeof(double));
-    CHECK_MAGMA(magma_dmalloc_cpu(&tau_h, mn));
-
-    // CHECK(cudaMalloc((void**)&tau_d, numOfClm * sizeof(double)));
+    check_allocation(tau_h);
     CHECK_MAGMA(magma_dmalloc(&tau_d, mn));
     CHECK(cudaMemcpy(tau_d, tau_h, mn * sizeof(magmaDouble_ptr), cudaMemcpyHostToDevice));
+    
+    CHECK_MAGMA(magma_dmalloc(&dT, (2 * mn + magma_roundup(mn, 32)) * nb));
 
-
-
-
-
-    // CHECK(cudaMalloc((void**)&dT, (2 * nb * numOfRow + (2*nb+1) * nb) * sizeof(magmaDouble_ptr)));
-    // CHECK_MAGMA(magma_dmalloc(&dT, (2 * nb * lda + (2*nb+1) * nb)));
-    // cudaDeviceSynchronize();
 
     //(2) Copy value to device
     CHECK(cudaMemcpy(mtxZ_cpy_d, mtxZ_d, lda * mn * sizeof(magmaDouble_ptr), cudaMemcpyDeviceToDevice));
-    cudaDeviceSynchronize();
-
-    // if(debug){
-    //     printf("\n\n~~mtxZ_cpy_d~~\n\n");
-    //     print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
-    // }
-
 
     //(3) Calculate lwork based on the documentation
-    // lwork = (numOfClm + 1) * nb + 2 * numOfClm;
     lwork = (mn + 1) * nb + 2 * mn;
     lwork = max( lwork, lda*mn + mn );
     if(debug){
+        printf("\n\n~~mtxZ_cpy_d~~\n\n");
+        print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
         printf("\nlda: %d", lda);
         printf("\nmn: %d", mn);
         printf("\nnb: %d", nb);
-        printf("\nlwork: %d\n\n", lwork);
+        printf("\nlwork: %d", lwork);
     }
-
-    // lwork = 200;
 
     //(4) Allocate workspace 
-    // CHECK(cudaMalloc((void**)&work_d, lwork * sizeof(magmaDouble_ptr)));
     CHECK_MAGMA(magma_dmalloc(&work_d, lwork));
-    cudaDeviceSynchronize();
-    // if(debug){
-    //     printf("\n\n~~work_d~~\n\n");
-    //     print_vector(work_d, lwork);
-    // }
 
-
-
-    printf("\nBefore magma_dgeqp3_gpu\n\n");
     if(debug){
+        printf("\n\n= = Before magma_dgeqp3_gpu = = \n\n");
         printf("\n\n~~mtxZ_cpy_d~~\n\n");
         print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
-    }
-
-
-    if(debug){
         printf("\n\nipiv: \n");
         for(int i = 0; i < numOfClm; i++){
             printf("%d,", ipiv[i]);
         }
-    }
-    
-    if(debug){
         printf("\n\ntau_d: \n");
         print_vector(tau_d, numOfClm);
     }
     
-    //FIXME the expected and ectual tau_d do not match.
+
     //(5) Perform QR decompostion with column pivoting
     //mtxZ_cpy_d contains the R matrix in its upper triangular part,
     //the orthogonal matrix Q is represented implicitly by the Householder vectors stored in the lower triangular part of mtxZ_cpy_d and in tau_d, scalor.
     CHECK_MAGMA(magma_dgeqp3_gpu(lda, mn, mtxZ_cpy_d, lda, ipiv, tau_d, work_d, lwork, &info));
-    cudaDeviceSynchronize();
-    /*
-    Expected
-
-    Permutation indices P:
-    [2 0 1]
-
-    Tau values:
-    [-0.42616235 -0.27529031 -0.0221448   0.47085005]
-
-    Matrix R (upper triangular):
-    [[-2.11187121e+01 -5.20865096e+00 -1.31636815e+01]
-    [ 0.00000000e+00  1.69409420e+00  8.47047100e-01]
-    [ 0.00000000e+00  0.00000000e+00  7.10889596e-16]
-    [ 0.00000000e+00  0.00000000e+00  0.00000000e+00]]
-
-    Householder vectors (lower triangular part of Q):
-    [[ 0.          0.          0.          0.        ]
-    [-0.47351372  0.          0.          0.        ]
-    [-0.5208651   0.16940942  0.          0.        ]
-    [-0.56821647  0.61410915  0.27982178  0.        ]]
     
-    */
-
     if(debug){
-        printf("\nAfter magma_dgeqp3_gpu\n\n");
+        printf("\n= = After magma_dgeqp3_gpu = = \n\n");
         printf("\n\nipiv: \n");
         for(int i = 0; i < numOfClm; i++){
             printf("%d, ", ipiv[i]);
@@ -200,68 +131,61 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
         print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
     }
 
+    //Copy tau values in host for magma_dorgqr_gpu later
+    CHECK(cudaMemcpy(tau_h, tau_d, numOfClm * sizeof(double), cudaMemcpyDeviceToHost));
+
     if(debug){
-        
+        printf("\n\ntau_h: \n");
+        for(int i = 0; i < numOfClm; i++){
+            printf("%f\n", tau_h[i]);
+        }
     }
-
-    // CHECK(cudaMemcpy(tau_h, tau_d, numOfClm * sizeof(double), cudaMemcpyDeviceToHost));
-
-    // if(debug){
-    //     printf("\n\ntau_h: \n");
-    //     for(int i = 0; i < numOfClm; i++){
-    //         printf("%f\n", tau_h[i]);
-    //     }
-    // }
     
     
     //(6) Iterate diagonal elements matrix R that is upper trianguar part of mtxZ_cpy_d to find rank
-    currentRank = setRank(mtxZ_cpy_d, currentRank, THREASHOLD);
+    currentRank = setRank(mtxZ_cpy_d, lda, currentRank, THREASHOLD);
+    numOfTau = getNumOfTau(tau_h, mn); // Set up for magma_dorgqr_gpu
+    nb = magma_get_dgeqrf_nb(lda, mn); // Block size for magma_dorgqr_gpu
+    lwork = mn*nb; // Recalculate lwork for magma_dorgqr_gpu
 
+    //Reallocate work_d space
+    CHECK_MAGMA(magma_free(work_d));
+    CHECK_MAGMA(magma_dmalloc(&work_d, lwork));
 
-    //TODO Moving on after fixing magma_dgeqp3_gpu issue
-    // //(7) Create an identity matrix on the device to extract matrix Q
-    // CHECK_MAGMA(magma_dorgqr_gpu((magma_int_t)numOfRow, (magma_int_t)numOfRow, (magma_int_t)numOfClm, mtxZ_cpy_d, lda, tau_h, dT, nb, &info));
+    if(debug){
+        printf("\n\n= = Before dorgqr_gpu = = \n");
+        printf("\nnumber of tau: %d", numOfTau);
+        printf("\ncurrent rank: %d", currentRank);
+        printf("\nnb: %d", nb);
+        printf("\nlwork: %d", lwork);
+    }
     
-    // //(8) Copy matrix Q to the mtxQ_trnc_d with significant column vectors
-    // CHECK(cudaMemcpy(mtxQ_d, mtxZ_cpy_d, numOfRow * currentRank * sizeof(magmaDouble_ptr), cudaMemcpyDeviceToDevice));
+    //(7) Construct matrix Q with tau values and upper triangular R and householder lower triangular in mtxZ_cpy_d
+    CHECK_MAGMA(magma_dorgqr_gpu(lda, mn, numOfTau, mtxZ_cpy_d, lda, tau_h, dT, nb, &info));
+    
+    //(8) Copy matrix Q to the mtxQ_trnc_d with significant number of column vectors calculated by upper triangular diagonal values
+    CHECK(cudaMemcpy(mtxQ_d, mtxZ_cpy_d, numOfRow * currentRank * sizeof(magmaDouble_ptr), cudaMemcpyDeviceToDevice));
+
+    if(debug){
+        printf("\n\n= = After magma_dorgqr_gpu = = \n");
+        printf("\n\n~~mtxQ_d truncated~~\n\n");
+        print_mtx_clm_d(mtxQ_d, numOfRow, currentRank);
+    }
+    
 
 
-    // if(debug){
-    //     printf("\n\nAfter magma_dorgqr_gpu\n");  
-    //     printf("\n~~mtxZ_cpy_d will be mtxQ~~\n\n");
-    //     print_mtx_clm_d(mtxZ_cpy_d, numOfRow, numOfClm);
-    //     printf("\n\n~~mtxQ_d_truncated~~\n\n");
-    //     print_mtx_clm_d(mtxZ_cpy_d, numOfRow, currentRank);
-    // }
-
-
-
-    // // //(9)Pass the address to the provided pointer, updating orhtonomal set
-    // CHECK(cudaFree(*mtxQ_trnc_d));
-    // *mtxQ_trnc_d = NULL;
-    // *mtxQ_trnc_d = mtxQ_d;
+    //(9)Pass the address to the provided pointer, updating orhtonomal set
+    CHECK(cudaFree(*mtxQ_trnc_d));
+    *mtxQ_trnc_d = NULL;
+    *mtxQ_trnc_d = mtxQ_d;
 
     //(10) Clean up
-    // CHECK(cudaFree(mtxZ_cpy_d));
     CHECK_MAGMA(magma_free(mtxZ_cpy_d));
-
-    // CHECK(cudaFree(mtxQ_d));
-    // CHECK_MAGMA(magma_free(mtxQ_d));
-
-    // free(ipiv);
     CHECK_MAGMA(magma_free_cpu(ipiv));
-
-    // free(tau_h);
-    // CHECK_MAGMA(magma_free_cpu(tau_h));
-
-    // CHECK(cudaFree(tau_d));
+    CHECK_MAGMA(magma_free_cpu(tau_h));
     CHECK_MAGMA(magma_free(tau_d));
-
-    // CHECK(cudaFree(work_d));
     CHECK_MAGMA(magma_free(work_d));
-
-    // CHECK(cudaFree(dT));
-    // CHECK_MAGMA(magma_free(dT));
+    CHECK_MAGMA(magma_free(dT));
 
     magma_finalize();
 
@@ -269,29 +193,57 @@ void orth_QR(double** mtxQ_trnc_d, double* mtxZ_d, int numOfRow, int numOfClm, i
 
 
 
-//Input: singluar values, int currnet rank, double threashould
-//Process: Check eigenvalues are greater than threashould, then set new rank
+
+//Process: Check diagoal values in matrix R If it is larger than threashould, increment rank.
 //Output: int newRank
-int setRank(double* sngVals_d, int currentRank, double threashold)
+int setRank(double* mtxR_d, int numOfRow, int currentRank, double threashold)
 {   
+    bool debug = false;
     int newRank = 0;
 
-    //Allcoate in heap to copy value from device
-    double* sngVals_h = (double*)malloc(currentRank * sizeof(double));
-    // Copy singular values from Device to count eigen values
-    CHECK(cudaMemcpy(sngVals_h, sngVals_d, currentRank * sizeof(double), cudaMemcpyDeviceToHost));
+
+    double* mtxR_h = (double*)malloc(numOfRow * currentRank * sizeof(double));
+    check_allocation(mtxR_h);
+
+    CHECK(cudaMemcpy(mtxR_h, mtxR_d, numOfRow * currentRank * sizeof(double), cudaMemcpyDeviceToHost));
+
+
+    if(debug){
+        printf("\n\n~~In setRank copy matrix R_h ~~\n");
+        for(int i = 0; i < numOfRow; i++){
+            for(int j = 0; j< currentRank; j++){
+                printf("%f ", mtxR_h[i + j * numOfRow]);
+            }
+            printf("\n");
+        }
+    }
 
     for(int wkr = 0; wkr < currentRank; wkr++){
-        if(sngVals_h[wkr] > threashold){
+        if(debug){
+            printf("\nDiagonal Elment: %f", mtxR_h[wkr * numOfRow + wkr]);
+        }
+        if(fabs(mtxR_h[wkr * numOfRow + wkr]) > threashold){
             newRank++;
         } // end of if
     } // end of for
 
-    free(sngVals_h);
+    free(mtxR_h);
+    assert(newRank <= currentRank && "new rank should be less than equal to current rank");
 
     return newRank;
 }
 
+
+//Process count number of tau values
+int getNumOfTau(double* tau_h, int numOfClm){
+    int numOfTau = 0;
+    for(int i = 0; i < numOfClm; i++){
+        if(tau_h[i] != 0.0){
+            numOfTau++;
+        }
+    }
+    return numOfTau;
+}
 
 
 

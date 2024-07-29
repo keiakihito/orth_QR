@@ -37,6 +37,13 @@ double myCPUTimer()
     return ((double)tp.tv_sec + (double)tp.tv_usec/1.0e6);
 }
 
+template<typename T>
+void check_allocation(const T *val_h){
+    if(val_h == NULL){
+        fprintf(stderr, "\n!!Failed to allocate host memory!!\n");
+        exit(EXIT_FAILURE);
+    }
+}
 
 template<typename T>
 void print_vector(const T *d_val, int size) {

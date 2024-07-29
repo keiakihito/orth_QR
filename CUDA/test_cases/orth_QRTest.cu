@@ -25,22 +25,21 @@ void orth_QRtest5();
 
 
 
-
 int main(int argc, char** argv)
 {
-    printf("\n\n~~orth_Test()~~\n\n");
+    printf("\n\n~~orth_QR_Test()~~\n\n");
 
-    // printf("\n\n🔍🔍🔍Test case 1🔍🔍🔍\n");
-    // orth_QRtest1();
+    printf("\n\n🔍🔍🔍Test case 1🔍🔍🔍\n");
+    orth_QRtest1();
     
-    // printf("\n\n🔍🔍🔍Test case 2🔍🔍🔍\n");
-    // orth_QRtest2();
+    printf("\n\n🔍🔍🔍Test case 2🔍🔍🔍\n");
+    orth_QRtest2();
 
-    // printf("\n\n🔍🔍🔍Test case 3🔍🔍🔍\n");
-    // orth_QRtest3();
+    printf("\n\n🔍🔍🔍Test case 3🔍🔍🔍\n");
+    orth_QRtest3();
 
-    // printf("\n\n🔍🔍🔍Test case 4🔍🔍🔍\n");
-    // orth_QRtest4();
+    printf("\n\n🔍🔍🔍Test case 4🔍🔍🔍\n");
+    orth_QRtest4();
 
     printf("\n\n🔍🔍🔍Test case 5🔍🔍🔍\n");
     orth_QRtest5();
@@ -73,8 +72,12 @@ void orth_QRtest1()
 
     double* mtxZ_d = NULL;
     double* mtxQ_trnc_d = NULL;
+    double* mtxI_d = NULL;
 
     bool debug = true;
+
+    cublasHandle_t cublasHandler = NULL;
+    CHECK_CUBLAS(cublasCreate(&cublasHandler));
 
 
     CHECK(cudaMalloc((void**)&mtxZ_d, numOfRow * numOfClm * sizeof(double)));
@@ -88,13 +91,15 @@ void orth_QRtest1()
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-
-    // if(mtxQ_trnc_d != NULL){
-    //     printf("\n\n~~mtxQ_trnc_d~~\n\n");
-    //     print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
-    // }
-    
+    printf("\n\n~~Outside function: mtxQ_trunc_d~~\n\n");
+    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
+
+    printf("\n\n= = 🔍Check Orthogonality🔍 = = \n\n");
+    CHECK(cudaMalloc((void**)&mtxI_d, crntRank * crntRank * sizeof(double)));
+    multiply_Den_ClmM_mtxT_mtx(cublasHandler, mtxQ_trnc_d, mtxI_d, numOfRow, crntRank);
+    print_mtx_clm_d(mtxI_d, crntRank, crntRank);
+
 
 
 } // end of orth_QRtest1()
@@ -112,12 +117,16 @@ void orth_QRtest2()
 
     int numOfRow = 6;
     int numOfClm = 5;
-    int crntRank = 6;
+    int crntRank = 5;
 
     double* mtxZ_d = NULL;
     double* mtxQ_trnc_d = NULL;
+    double* mtxI_d = NULL;
 
     bool debug = true;
+
+    cublasHandle_t cublasHandler = NULL;
+    CHECK_CUBLAS(cublasCreate(&cublasHandler));
 
 
     CHECK(cudaMalloc((void**)&mtxZ_d, numOfRow * numOfClm * sizeof(double)));
@@ -131,10 +140,14 @@ void orth_QRtest2()
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-
-    // printf("\n\n~~mtxY_Hat~~\n\n");
-    // print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+    printf("\n\n~~Outside function: mtxQ_trunc_d~~\n\n");
+    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
+
+    printf("\n\n= = 🔍Check Orthogonality🔍 = = \n\n");
+    CHECK(cudaMalloc((void**)&mtxI_d, crntRank * crntRank * sizeof(double)));
+    multiply_Den_ClmM_mtxT_mtx(cublasHandler, mtxQ_trnc_d, mtxI_d, numOfRow, crntRank);
+    print_mtx_clm_d(mtxI_d, crntRank, crntRank);
 
 } // end of orth_QRtest1()
 
@@ -153,10 +166,14 @@ void orth_QRtest3()
     int numOfClm = 5;
     int crntRank = 5;
 
-    double* mtxZ_d = NULL;
+        double* mtxZ_d = NULL;
     double* mtxQ_trnc_d = NULL;
+    double* mtxI_d = NULL;
 
     bool debug = true;
+
+    cublasHandle_t cublasHandler = NULL;
+    CHECK_CUBLAS(cublasCreate(&cublasHandler));
 
 
     CHECK(cudaMalloc((void**)&mtxZ_d, numOfRow * numOfClm * sizeof(double)));
@@ -170,9 +187,15 @@ void orth_QRtest3()
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-    // printf("\n\n~~mtxY_Hat~~\n\n");
-    // print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+    printf("\n\n~~Outside function: mtxQ_trunc_d~~\n\n");
+    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
+
+    printf("\n\n= = 🔍Check Orthogonality🔍 = = \n\n");
+    CHECK(cudaMalloc((void**)&mtxI_d, crntRank * crntRank * sizeof(double)));
+    multiply_Den_ClmM_mtxT_mtx(cublasHandler, mtxQ_trnc_d, mtxI_d, numOfRow, crntRank);
+    print_mtx_clm_d(mtxI_d, crntRank, crntRank);
+
 
 } // end of orth_QRtest1()
 
@@ -196,8 +219,12 @@ void orth_QRtest4()
 
     double* mtxZ_d = NULL;
     double* mtxQ_trnc_d = NULL;
+    double* mtxI_d = NULL;
 
     bool debug = true;
+
+    cublasHandle_t cublasHandler = NULL;
+    CHECK_CUBLAS(cublasCreate(&cublasHandler));
 
 
     CHECK(cudaMalloc((void**)&mtxZ_d, numOfRow * numOfClm * sizeof(double)));
@@ -211,9 +238,15 @@ void orth_QRtest4()
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-    // printf("\n\n~~mtxY_Hat~~\n\n");
-    // print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+    printf("\n\n~~Outside function: mtxQ_trunc_d~~\n\n");
+    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
+
+    printf("\n\n= = 🔍Check Orthogonality🔍 = = \n\n");
+    CHECK(cudaMalloc((void**)&mtxI_d, crntRank * crntRank * sizeof(double)));
+    multiply_Den_ClmM_mtxT_mtx(cublasHandler, mtxQ_trnc_d, mtxI_d, numOfRow, crntRank);
+    print_mtx_clm_d(mtxI_d, crntRank, crntRank);
+
 
 
 } // end of orth_QRtest1()
@@ -243,10 +276,14 @@ void orth_QRtest5()
     int numOfClm = 15;
     int crntRank = 15;
 
-    double* mtxZ_d = NULL;
+        double* mtxZ_d = NULL;
     double* mtxQ_trnc_d = NULL;
+    double* mtxI_d = NULL;
 
     bool debug = true;
+
+    cublasHandle_t cublasHandler = NULL;
+    CHECK_CUBLAS(cublasCreate(&cublasHandler));
 
 
     CHECK(cudaMalloc((void**)&mtxZ_d, numOfRow * numOfClm * sizeof(double)));
@@ -260,9 +297,171 @@ void orth_QRtest5()
 
     orth_QR(&mtxQ_trnc_d, mtxZ_d, numOfRow, numOfClm, crntRank);
 
-
-    // printf("\n\n~~mtxY_Hat~~\n\n");
-    // print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
+    printf("\n\n~~Outside function: mtxQ_trunc_d~~\n\n");
+    print_mtx_clm_d(mtxQ_trnc_d, numOfRow, crntRank);
     printf("\n\n~~Current Rarnk = %d~~\n\n", crntRank);
 
+    printf("\n\n= = 🔍Check Orthogonality🔍 = = \n\n");
+    CHECK(cudaMalloc((void**)&mtxI_d, crntRank * crntRank * sizeof(double)));
+    multiply_Den_ClmM_mtxT_mtx(cublasHandler, mtxQ_trnc_d, mtxI_d, numOfRow, crntRank);
+    print_mtx_clm_d(mtxI_d, crntRank, crntRank);
+
+
 } // end of orth_QRtest1()
+
+/*
+Sample Run
+
+~~orth_QR_Test()~~
+
+
+
+🔍🔍🔍Test case 1🔍🔍🔍
+
+
+~~mtxZ~~
+
+1.000000 5.000000 9.000000 
+2.000000 6.000000 10.000000 
+3.000000 7.000000 11.000000 
+4.000000 8.000000 12.000000 
+
+
+~~Outside function: mtxQ_trunc_d~~
+
+-0.426162 -0.719990 
+-0.473514 -0.275290 
+-0.520865 0.169409 
+-0.568216 0.614109 
+
+
+~~Current Rarnk = 2~~
+
+
+
+= = 🔍Check Orthogonality🔍 = = 
+
+1.000000 0.000000 
+0.000000 1.000000 
+
+
+🔍🔍🔍Test case 2🔍🔍🔍
+
+
+~~mtxZ~~
+
+1.100000 2.200000 3.300000 4.400000 5.500000 
+0.800000 1.600000 2.400000 3.200000 2.300000 
+3.000000 4.100000 5.200000 6.300000 0.700000 
+2.200000 3.300000 4.400000 5.500000 1.700000 
+0.200000 0.300000 0.400000 0.500000 0.600000 
+0.700000 0.800000 1.100000 1.500000 3.200000 
+
+
+~~Outside function: mtxQ_trunc_d~~
+
+-0.435580 0.670472 0.217707 0.529401 
+-0.316785 0.144908 0.532534 -0.595437 
+-0.623671 -0.486435 -0.344535 0.226417 
+-0.544474 -0.205153 0.116951 -0.234891 
+-0.049498 0.071150 -0.087421 0.235557 
+-0.148493 0.495681 -0.727314 -0.450848 
+
+
+~~Current Rarnk = 4~~
+
+
+
+= = 🔍Check Orthogonality🔍 = = 
+
+1.000000 0.000000 0.000000 0.000000 
+0.000000 1.000000 -0.000000 -0.000000 
+0.000000 -0.000000 1.000000 -0.000000 
+0.000000 -0.000000 -0.000000 1.000000 
+
+
+🔍🔍🔍Test case 3🔍🔍🔍
+
+
+~~mtxZ~~
+
+1.100000 2.200000 3.300000 4.400000 5.500000 
+0.800000 1.600000 2.400000 3.200000 4.000000 
+3.000000 4.100000 5.200000 6.300000 7.400000 
+2.200000 3.300000 4.400000 5.500000 6.600000 
+1.400000 2.500000 3.600000 4.700000 5.800000 
+0.600000 1.500000 2.400000 3.300000 4.200000 
+7.700000 5.600000 9.600000 8.800000 7.000000 
+
+
+~~Outside function: mtxQ_trunc_d~~
+
+-0.351490 -0.263976 0.326902 
+-0.255629 -0.191983 0.237747 
+-0.472913 -0.064907 -0.708444 
+-0.421788 -0.148726 -0.272509 
+-0.370662 -0.232544 0.163426 
+-0.268410 -0.247413 0.430941 
+-0.447351 0.867085 0.219182 
+
+
+~~Current Rarnk = 3~~
+
+
+
+= = 🔍Check Orthogonality🔍 = = 
+
+1.000000 -0.000000 -0.000000 
+-0.000000 1.000000 -0.000000 
+-0.000000 -0.000000 1.000000 
+
+
+🔍🔍🔍Test case 4🔍🔍🔍
+
+
+~~mtxZ~~
+
+1.200000 2.300000 3.400000 4.500000 5.600000 6.700000 7.800000 
+0.900000 1.800000 2.700000 3.600000 4.500000 5.400000 6.300000 
+3.100000 4.200000 5.300000 6.400000 7.500000 8.600000 9.700000 
+2.300000 3.400000 4.500000 5.600000 6.700000 7.800000 8.900000 
+1.500000 2.600000 3.700000 4.800000 5.900000 6.000000 7.100000 
+0.700000 1.600000 2.500000 3.400000 4.300000 5.200000 6.100000 
+2.100000 3.000000 4.900000 5.800000 6.700000 7.600000 8.500000 
+3.300000 4.400000 5.500000 6.600000 7.700000 8.800000 9.900000 
+0.100000 0.500000 0.300000 1.100000 1.900000 2.200000 2.900000 
+0.200000 0.700000 0.400000 1.200000 1.500000 2.300000 3.100000 
+0.300000 0.200000 0.500000 1.300000 1.800000 2.500000 3.200000 
+
+
+~~Outside function: mtxQ_trunc_d~~
+
+-0.329619 -0.190766 0.306499 -0.147336 -0.105426 -0.210807 0.181717 
+-0.266231 -0.173692 0.281095 -0.126330 -0.087860 -0.178344 0.153961 
+-0.409911 0.218189 -0.397669 -0.013060 -0.068218 -0.074600 0.059033 
+-0.376104 0.045997 -0.101177 -0.069597 -0.083884 -0.131950 0.110690 
+-0.300038 0.083483 0.277866 0.684617 -0.101722 0.550401 0.209307 
+-0.257779 -0.216739 0.355218 -0.140464 -0.091776 -0.192681 0.166875 
+-0.359200 0.299835 0.342931 -0.197235 0.425152 0.155807 -0.647720 
+-0.418363 0.261237 -0.471792 0.001075 -0.064302 -0.060262 0.046119 
+-0.122551 -0.480589 -0.150380 0.542684 -0.041537 -0.401700 -0.523267 
+-0.131002 -0.480032 -0.195697 -0.367172 -0.407910 0.583697 -0.268705 
+-0.135228 -0.458509 -0.232758 -0.025766 0.773111 0.175327 0.296989 
+
+
+~~Current Rarnk = 7~~
+
+
+
+= = 🔍Check Orthogonality🔍 = = 
+
+1.000000 -0.000000 0.000000 -0.000000 -0.000000 -0.000000 0.000000 
+-0.000000 1.000000 -0.000000 -0.000000 -0.000000 -0.000000 0.000000 
+0.000000 -0.000000 1.000000 0.000000 -0.000000 -0.000000 0.000000 
+-0.000000 -0.000000 0.000000 1.000000 0.000000 -0.000000 0.000000 
+-0.000000 -0.000000 -0.000000 0.000000 1.000000 0.000000 0.000000 
+-0.000000 -0.000000 -0.000000 -0.000000 0.000000 1.000000 -0.000000 
+0.000000 0.000000 0.000000 0.000000 0.000000 -0.000000 1.000000 
+
+
+ */
